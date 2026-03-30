@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>議長発話練習アプリ</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Hiragino Sans', 'Meiryo', sans-serif;
+      background: #f0f4f8;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      color: white;
+      padding: 16px 24px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    header h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: 0.05em; }
+    header p  { font-size: 0.8rem; opacity: 0.7; margin-top: 4px; }
+
+    .container { max-width: 860px; margin: 0 auto; padding: 20px 16px; }
+
+    /* Progress */
+    .progress-bar-wrap {
+      background: #dde3ea;
+      border-radius: 8px;
+      height: 8px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4ade80, #22d3ee);
+      border-radius: 8px;
+      transition: width 0.4s ease;
+    }
+    .progress-label {
+      text-align: right;
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin-bottom: 20px;
+    }
+
+    /* Script card */
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+      transition: box-shadow 0.3s;
+    }
+
+    .speaker-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      margin-bottom: 14px;
+    }
+
+    .badge-pc   { background: #e0f2fe; color: #0369a1; }
+    .badge-you  { background: #fef9c3; color: #92400e; border: 2px solid #fbbf24; }
+
+    .speaker-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #374151;
+    }
+
+    .script-text {
+      font-size: 1.05rem;
+      line-height: 2;
+      color: #1f2937;
+      white-space: pre-wrap;
+    }
+
+    /* Your turn highlight */
+    .your-turn-card {
+      border: 3px solid #fbbf24;
+      background: #fffbeb;
+    }
+    .your-turn-card .script-text {
+      color: #92400e;
+      font-weight: 600;
+    }
+
+    /* Speaking animation */
+    .speaking-card {
+      border: 3px solid #22d3ee;
+      background: #f0fdfe;
+    }
+    .speaking-indicator {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      color: #0891b2;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+    .speaking-indicator.active { display: flex; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #22d3ee; animation: bounce 0.6s infinite alternate; }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 12px 24px;
+      border-radius: 10px;
+      border: none;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.03em;
+    }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-play  { background: #22c55e; color: white; }
+    .btn-play:hover:not(:disabled)  { background: #16a34a; transform: translateY(-1px); }
+
+    .btn-next  { background: #3b82f6; color: white; }
+    .btn-next:hover:not(:disabled)  { background: #2563eb; transform: translateY(-1px); }
+
+    .btn-prev  { background: #6b7280; color: white; }
+    .btn-prev:hover:not(:disabled)  { background: #4b5563; transform: translateY(-1px); }
+
+    .btn-stop  { background: #ef4444; color: white; }
+    .btn-stop:hover:not(:disabled)  { background: #dc2626; transform: translateY(-1px); }
+
+    .btn-restart { background: #8b5cf6; color: white; }
+    .btn-restart:hover:not(:disabled) { background: #7c3aed; transform: translateY(-1px); }
+
+    /* Context panel */
+    .context-panel {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      border: 1px solid #e2e8f0;
+    }
+    .context-panel h3 { font-size: 0.82rem; color: #64748b; margin-bottom: 8px; letter-spacing: 0.05em; }
+    .context-list { list-style: none; }
+    .context-list li {
+      font-size: 0.88rem;
+      padding: 3px 0;
+      color: #374151;
+      border-left: 3px solid #e2e8f0;
+      padding-left: 10px;
+      margin-bottom: 4px;
+    }
+    .context-list li.done      { color: #9ca3af; text-decoration: line-through; }
+    .context-list li.current   { border-color: #fbbf24; color: #92400e; font-weight: 700; background: #fffbeb; border-radius: 0 6px 6px 0; }
+    .context-list li.upcoming  { color: #374151; }
+
+    /* Completion */
+    .completion-screen {
+      text-align: center;
+      padding: 48px 20px;
+    }
+    .completion-screen .emoji { font-size: 4rem; margin-bottom: 16px; }
+    .completion-screen h2 { font-size: 1.6rem; color: #1a1a2e; margin-bottom: 8px; }
+    .completion-screen p  { color: #6b7280; margin-bottom: 24px; }
+
+    /* Voice warning */
+    .voice-warning {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 0.82rem;
+      color: #9a3412;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    /* Speed control */
+    .speed-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.82rem;
+      color: #6b7280;
+      margin-bottom: 16px;
+      justify-content: center;
+    }
+    .speed-wrap input { width: 120px; }
+    .speed-wrap span  { font-weight: 700; color: #374151; min-width: 32px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🎙 議長 発話練習アプリ</h1>
+  <p>令和７年度 宇田川原町内会 総会</p>
+</header>
+
+<div class="container">
+
+  <div class="voice-warning" id="voiceWarning">
+    ⚠️ このブラウザは音声読み上げ（日本語）に対応していない可能性があります。テキスト表示で練習を続けることはできます。
+  </div>
+
+  <div class="speed-wrap">
+    <label for="speedRange">読み上げ速度：</label>
+    <input type="range" id="speedRange" min="0.6" max="1.4" step="0.1" value="0.9">
+    <span id="speedVal">0.9x</span>
+  </div>
+
+  <!-- Context panel -->
+  <div class="context-panel">
+    <h3>📋 進行状況</h3>
+    <ul class="context-list" id="contextList"></ul>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill"></div></div>
+  <div class="progress-label" id="progressLabel"></div>
+
+  <!-- Main card -->
+  <div id="mainArea"></div>
+
+  <!-- Controls -->
+  <div class="controls" id="controls"></div>
+
+</div>
+
+<script>
+// ─── SCENARIO DATA ───────────────────────────────────────────────
+const SCENARIO = [
+  {
+    speaker: "司会",
+    role: "pc",
+    label: "【司会】",
+    text: "皆様、本日はお忙しい中お集まりいただき、誠にありがとうございます。\n定刻となりましたので、ただ今より「令和７年度 宇田川原町内会 総会」を開催します。\n\n本日はのところ、多くの皆様にご出席いただきまして、誠にありがとうございます。\n\n開催に先立ちまして、本総会の成立についてご報告します。本日の総会は、会員数（３８）名に対し、出席者数（２６）名、委任状の提出（６）名、計（３２）名となっております。町内会規約第１８条の規定に基づき、会員の２分の１以上の出席（委任状を含む）をいただいておりますので本総会は有効に成立していることをご報告します。\n\nまず始めに、大神会長より皆様にご挨拶申し上げます。大神会長お願いします。"
+  },
+  {
+    speaker: "大神会長",
+    role: "pc",
+    label: "【大神会長】",
+    text: "（ご挨拶）"
+  },
+  {
+    speaker: "司会",
+    role: "pc",
+    label: "【司会】",
+    text: "大神会長、ありがとうございました。\n\nここで本総会の開催に際しまして、祝電を頂戴しておりますので披露させていただきます。時間の都合上、お名前のみのご紹介とさせていただきます。\n\n福岡県議会議員 塩生さま\n福岡市議会議員 諸隈さま\n\n以上２名の方からお祝いのメッセージをいただいております。メッセージの内容につきましては、後方に掲示しておきますので、後ほどお目通しいただければ幸いです。\n\nそれでは、これより議事に入ります。はじめに、本日の議長を選出したいと思います。どなたか立候補、またはご推薦いただける方はいらっしゃいませんでしょうか？\n\n……いらっしゃらないようですので、事務局より「末次さん」を議長に推薦したいと思いますが、いかがでしょうか？\n\n皆様、よろしければ拍手をもってご承認をお願いします。\n\nありがとうございます。皆様の承認をいただきましたので、「末次さん」議長席へお進みください。"
+  },
+  {
+    speaker: "議長（あなた）",
+    role: "you",
+    label: "【議長】",
+    text: "議事を円滑に進めるため、皆様方のご協力をお願いします。\n\nなお、議長の権限により書記を木下副会長、議事録署名人を「大神伸雄さん、中村茂人さん」にお願いしたいと思います。よろしくお願いします。\n\nそれでは、これより議事に入ります。第1号議案と第2号議案は内容が関連しておりますので、一括して事務局よりご説明申し上げ、その後で一括して質疑応答の時間を設けたいと思います。\n\nそれでは、第1号議案「令和7年度 事業報告」につきまして、大神(秀文)会長お願いします。"
+  },
+  {
+    speaker: "大神会長",
+    role: "pc",
+    label: "【大神会長】",
+    text: "（令和７年度事業報告を説明）"
+  },
+  {
+    speaker: "議長（あなた）",
+    role: "you",
+    label: "【議長】",
+    text: "続きまして、第2号議案「令和７年度決算報告」につきまして、井手会計お願いします。"
+  },
+  {
+    speaker: "井手会計",
+    role: "pc",
+    label: "【井手会計】",
+    text: "（令和７年度決算報告を説明）"
+  },
+  {
+    speaker: "議長（あなた）",
+    role: "you",
+    label: "【議長】",
+    text: "ただ今の令和７年度決算報告に関しまして、監事の中村さんより、監査報告をお願いします。"
+  },
+  {
+    speaker: "中村監事",
+    role: "pc",
+    label: "【中村監事】",
+    text: "（監査報告を説明）"
+  },
+  {
+    speaker: "議長（あなた）",
+    role: "you",
+    label: "【議長】",
+    text: "ただ今、監事より監査報告をいただきました。\n\n令和7年度の事業報告、並びに決算報告につきまして、皆様からご質問やご意見はございませんでしょうか？\n\n……特になければ、本議案をご承認いただいたものとしたいと思いますが、よろしいでしょうか。\n\nそれでは、承認いただける方は、拍手をお願いします。\n\nありがとうございます。拍手多数につき、第1号、第2号議案は、原案の通り承認されました。"
+  },
+  {
+    speaker: "議長（あなた）",
+    role: "you",
+    label: "【議長】",
+    text: "それでは続きまして、第3号議案「令和8年度 新役員（案）」につきまして、大神(秀文)会長より候補者のご紹介をお願いします。"
+  },
+  {
+    speaker: "大神会長",
+    role: "pc",
+    label: "【大神会長】",
+    text: "（令和8年度の新役員紹介）"
+  },
+  {
+    speaker: "議長（あなた）",
+    role: "you",
+    label: "【議長】",
+    text: "ありがとうございました。\n\nただ今、大神会長より第3号議案についてご紹介いたしました新役員（案）につきまして、皆様のご承認をいただけますでしょうか？\n\n承認いただける方は、拍手をお願いします。\n\nありがとうございます。拍手多数により、新役員案が承認されました。"
+  },
+  {
+    speaker: "議長（あなた）",
+    role: "you",
+    label: "【議長】",
+    text: "それでは、新役員が承認されましたので、役員の交代をお願いします。\n\n新役員の方は、簡単にご挨拶をお願いします。"
+  },
+  {
+    speaker: "新役員",
+    role: "pc",
+    label: "【新役員】",
+    text: "（新役員の挨拶）"
+  },
+  {
+    speaker: "議長（あなた）",
+    role: "you",
+    label: "【議長】",
+    text: "それでは、議事を続行いたします。第4号議案と第5号議案は関連する内容ですので、一括して事務局よりご説明いただいた後、まとめて質疑応答の時間を設けたいと思います。\n\nそれでは、まず第4号議案「令和8年度 事業計画案」につきまして、新しく就任されました大神(郁郎)会長より、ご説明をお願いします。"
+  },
+  {
+    speaker: "大神会長（新）",
+    role: "pc",
+    label: "【新会長・大神会長】",
+    text: "（令和８年度事業計画（案）について説明）"
+  },
+  {
+    speaker: "議長（あなた）",
+    role: "you",
+    label: "【議長】",
+    text: "大神(郁郎)会長、ありがとうございました。\n\n続きまして、第5号議案「令和8年度予算（案）」につきまして、新しく就任されました永井会計よりご説明をお願いします。"
+  },
+  {
+    speaker: "永井会計（新）",
+    role: "pc",
+    label: "【新会計・永井会計】",
+    text: "（令和８年度予算（案）について説明）"
+  },
+  {
+    speaker: "議長（あなた）",
+    role: "you",
+    label: "【議長】",
+    text: "永井会計、ありがとうございました。\n\nただ今、令和8年度の事業計画（案）、ならびに予算（案）についてご説明いただきました。これら2つの議案につきまして、皆様からご質問やご意見はございませんか？\n\n……特になければ、第4号・第5号議案を一括して、拍手をもってご承認いただけますでしょうか。\n\nありがとうございます。拍手多数につき、両議案とも原案通り承認されました。"
+  },
+  {
+    speaker: "議長（あなた）",
+    role: "you",
+    label: "【議長】",
+    text: "これにて、それぞれの項目から「案」の文字を外し、令和８年度の「事業計画」および「予算」として決定します。"
+  },
+  {
+    speaker: "議長（あなた）",
+    role: "you",
+    label: "【議長】",
+    text: "続きまして、「その他」の議題に入ります。\n\n本日は、「お宮当番要領の一部見直し」について協議事項があります。\n\nお宮当番さんより内容の説明をお願いします。"
+  },
+  {
+    speaker: "お宮当番",
+    role: "pc",
+    label: "【お宮当番】",
+    text: "（お宮当番要領一部見直しについて説明）"
+  },
+  {
+    speaker: "議長（あなた）",
+    role: "you",
+    label: "【議長】",
+    text: "ただ今、「お宮当番要領の一部見直し」について説明いただきました。この件につきまして、皆様からご質問やご意見はございませんか？\n\n……特になければ、ただ今の説明の通り承認いただけるようでしたら、拍手をお願いいたします。\n\nありがとうございます。拍手多数につき、お宮当番要領の一部見直し案は承認されました。\n\n見直し部分につきましては、次回の当番より適用させていただきます。"
+  },
+  {
+    speaker: "議長（あなた）",
+    role: "you",
+    label: "【議長】",
+    text: "皆様、ありがとうございました。\n\n以上をもちまして、本日ご提案いたしました全ての議案の審議を終了しました。\n\n最後になりますが、全体を通して、あるいは町内会運営全般につきまして、何かご意見やご要望などはございませんでしょうか？\n\n……ご意見等ないようでしたら、ここで私は議長を退任させていただきます。議事進行にご協力いただきありがとうございました。"
+  },
+  {
+    speaker: "司会",
+    role: "pc",
+    label: "【司会】",
+    text: "議長を務めていただきました、末次さん、ありがとうございました。\n\n本日の宇田川原町内会総会は、皆様のご協力により、無事終了することができました。ありがとうございました。\n\nこれを持ちまして、本日の総会を終了します。今後とも町内会の運営につきましては、皆様、ご協力よろしくお願いします。\n\nこの後、意見交換会を実施しますので、お時間の許す方はご参加いただきますようお願いします。お帰りの方は、「お弁当」「お茶」を準備しておりますので、お持ち帰りください。プロ野球の「入場無料引き換えチケット」が若干ありますので、希望されます方は役員席までお越しください。\n\n本日はありがとうございました。"
+  }
+];
+
+// ─── STATE ───────────────────────────────────────────────────────
+let current   = 0;
+let utterance = null;
+let speaking  = false;
+let speed     = 0.9;
+
+// ─── SPEECH ──────────────────────────────────────────────────────
+function getVoice() {
+  const voices = speechSynthesis.getVoices();
+  return voices.find(v => v.lang === 'ja-JP') ||
+         voices.find(v => v.lang.startsWith('ja')) ||
+         null;
+}
+
+function speak(text, onEnd) {
+  speechSynthesis.cancel();
+  const clean = text.replace(/（[^）]*）/g, '').replace(/\n+/g, '。');
+  utterance = new SpeechSynthesisUtterance(clean);
+  utterance.lang  = 'ja-JP';
+  utterance.rate  = speed;
+  const v = getVoice();
+  if (v) utterance.voice = v;
+  utterance.onend   = onEnd;
+  utterance.onerror = onEnd;
+  speechSynthesis.speak(utterance);
+}
+
+function stopSpeech() {
+  speechSynthesis.cancel();
+  speaking = false;
+  utterance = null;
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────
+function buildContextList() {
+  const items = SCENARIO
+    .map((s, i) => ({ label: s.label + '　' + s.text.split('\n')[0].slice(0, 20) + (s.text.length > 20 ? '…' : ''), index: i }));
+
+  const ul = document.getElementById('contextList');
+  ul.innerHTML = '';
+  items.forEach(item => {
+    const li = document.createElement('li');
+    li.textContent = item.label;
+    if (item.index < current)       li.className = 'done';
+    else if (item.index === current) li.className = 'current';
+    else                             li.className = 'upcoming';
+    ul.appendChild(li);
+  });
+
+  // scroll current into view
+  const cur = ul.querySelector('.current');
+  if (cur) cur.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function render() {
+  const total = SCENARIO.length;
+  const pct   = Math.round((current / total) * 100);
+  document.getElementById('progressFill').style.width  = pct + '%';
+  document.getElementById('progressLabel').textContent = `${current} / ${total} ステップ完了`;
+
+  buildContextList();
+
+  const area = document.getElementById('mainArea');
+
+  if (current >= total) {
+    area.innerHTML = `
+      <div class="card completion-screen">
+        <div class="emoji">🎉</div>
+        <h2>練習完了！お疲れ様でした</h2>
+        <p>全シーンの練習が終わりました。本番もきっと上手くいきます！</p>
+      </div>`;
+    renderControls(true);
+    return;
+  }
+
+  const s    = SCENARIO[current];
+  const isYou = s.role === 'you';
+
+  const speakingClass = (speaking && !isYou) ? 'speaking-card' : '';
+  const yourClass     = isYou ? 'your-turn-card' : '';
+
+  area.innerHTML = `
+    <div class="card ${speakingClass} ${yourClass}" id="currentCard">
+      <div class="speaker-badge ${isYou ? 'badge-you' : 'badge-pc'}">
+        ${isYou ? '🎤 あなたの番（議長）' : '🔊 PC読み上げ'}
+      </div>
+      <div class="speaking-indicator ${speaking && !isYou ? 'active' : ''}" id="speakInd">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        読み上げ中...
+      </div>
+      <div class="speaker-label">${s.label}</div>
+      <div class="script-text">${s.text.replace(/\n/g, '<br>')}</div>
+    </div>`;
+
+  renderControls(false);
+}
+
+function renderControls(done) {
+  const ctrl = document.getElementById('controls');
+  if (done) {
+    ctrl.innerHTML = `<button class="btn-restart" onclick="restart()">🔄 最初からやり直す</button>`;
+    return;
+  }
+
+  const s     = SCENARIO[current];
+  const isYou = s.role === 'you';
+
+  let html = '';
+
+  // Prev
+  html += `<button class="btn-prev" onclick="prevStep()" ${current === 0 ? 'disabled' : ''}>◀ 前へ</button>`;
+
+  if (isYou) {
+    html += `<button class="btn-next" onclick="nextStep()">✅ 読み終わったら次へ ▶</button>`;
+  } else {
+    if (!speaking) {
+      html += `<button class="btn-play" onclick="startReading()">▶ 読み上げ開始</button>`;
+    } else {
+      html += `<button class="btn-stop" onclick="stopReading()">⏹ 停止</button>`;
+    }
+    html += `<button class="btn-next" onclick="skipNext()">⏭ スキップして次へ</button>`;
+  }
+
+  ctrl.innerHTML = html;
+}
+
+// ─── ACTIONS ─────────────────────────────────────────────────────
+function startReading() {
+  const s = SCENARIO[current];
+  speaking = true;
+  render();
+  speak(s.text, () => {
+    speaking = false;
+    // auto advance after PC lines
+    current++;
+    render();
+  });
+}
+
+function stopReading() {
+  stopSpeech();
+  render();
+}
+
+function skipNext() {
+  stopSpeech();
+  current++;
+  render();
+}
+
+function nextStep() {
+  stopSpeech();
+  current++;
+  render();
+}
+
+function prevStep() {
+  stopSpeech();
+  if (current > 0) current--;
+  render();
+}
+
+function restart() {
+  stopSpeech();
+  current = 0;
+  render();
+}
+
+// ─── SPEED CONTROL ───────────────────────────────────────────────
+document.getElementById('speedRange').addEventListener('input', function() {
+  speed = parseFloat(this.value);
+  document.getElementById('speedVal').textContent = speed.toFixed(1) + 'x';
+});
+
+// ─── INIT ─────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  // Load voices async
+  speechSynthesis.getVoices();
+  speechSynthesis.onvoiceschanged = () => {
+    const v = getVoice();
+    if (!v) document.getElementById('voiceWarning').style.display = 'block';
+  };
+  render();
+});
+
+// Prevent speech from continuing when page hidden
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopSpeech();
+});
+</script>
+</body>
+</html>
