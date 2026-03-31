@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>議長発話練習アプリ（ナレーション付き）</title>
+  <title>議長発話練習アプリ（スキップ機能追加版）</title>
   <style>
-    /* デザイン設定（変更なし） */
+    /* 既存のスタイルを継承 */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Hiragino Sans', 'Meiryo', sans-serif; background: #f0f4f8; color: #1a1a2e; min-height: 100vh; }
     header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; padding: 16px 24px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
@@ -14,21 +14,20 @@
     .container { max-width: 860px; margin: 0 auto; padding: 20px 16px; }
     .progress-bar-wrap { background: #dde3ea; border-radius: 8px; height: 8px; margin-bottom: 16px; overflow: hidden; }
     .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #4ade80, #22d3ee); border-radius: 8px; transition: width 0.4s ease; }
-    .progress-label { text-align: right; font-size: 0.75rem; color: #6b7280; margin-bottom: 20px; }
-    .card { background: white; border-radius: 16px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 20px; transition: box-shadow 0.3s; }
-    .speaker-badge { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; margin-bottom: 14px; }
+    .card { background: white; border-radius: 16px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    .speaker-badge { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; margin-bottom: 14px; }
     .badge-pc { background: #e0f2fe; color: #0369a1; }
     .badge-you { background: #fef9c3; color: #92400e; border: 2px solid #fbbf24; }
     .speaker-label { font-size: 0.85rem; font-weight: 700; margin-bottom: 6px; color: #374151; }
     .script-text { font-size: 1.05rem; line-height: 2; color: #1f2937; white-space: pre-wrap; }
     .your-turn-card { border: 3px solid #fbbf24; background: #fffbeb; }
-    .your-turn-card .script-text { color: #92400e; font-weight: 600; }
     .controls { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px; }
-    button { padding: 12px 24px; border-radius: 10px; border: none; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: all 0.2s; letter-spacing: 0.03em; }
+    button { padding: 12px 24px; border-radius: 10px; border: none; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
     .btn-play { background: #22c55e; color: white; }
     .btn-next { background: #3b82f6; color: white; }
     .btn-prev { background: #6b7280; color: white; }
     .btn-stop { background: #ef4444; color: white; }
+    .btn-skip { background: #94a3b8; color: white; } /* スキップ用：少し控えめな色 */
     .btn-autoread { background: #ff9800; color: white; }
     .context-panel { background: #f8fafc; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
     .context-list { list-style: none; height: 120px; overflow-y: auto; }
@@ -43,7 +42,7 @@
 
 <header>
   <h1>🎙 議長 発話練習アプリ</h1>
-  <p>令和７年度 宇田川原町内会 総会（ナレーション付き）</p>
+  <p>令和７年度 宇田川原町内会 総会（スキップ機能追加版）</p>
 </header>
 
 <div class="container">
@@ -64,7 +63,7 @@
 </div>
 
 <script>
-// シナリオデータ
+// シナリオデータ（改善版）
 const SCENARIO = [
   { speaker: "司会", role: "pc", label: "【司会】", text: "皆さま、おはようございます。ただいまより、「令和7年度宇田川原町内会 総会」を開催いたします。会員38名のうち、出席26名、委任状6名、合計32名の参加をいただいております。規約第18条に基づき、過半数に達しておりますので、本総会は成立しております。それでは、最初に大神会長よりご挨拶をいただきます。大神会長、よろしくお願いいたします。" },
   { speaker: "大神会長", role: "pc", label: "【大神会長】", text: "（会長あいさつ）" },
@@ -96,16 +95,12 @@ let current = 0;
 let speed = 0.9;
 let isAutoplay = false;
 
-// 音声再生：ト書きをナレーションに変換する処理を追加
+// 音声再生（ナレーション変換機能付き）
 function speak(text, onEnd) {
   speechSynthesis.cancel();
-  
   let targetText = text;
-  
-  // ( ) の中身を抽出
   const match = text.match(/（([^）]*)）/);
   if (match) {
-    // 括弧の中身がある場合、「（内容）が行われます」というナレーションに変換
     targetText = match[1] + "が行われます。";
   }
 
@@ -151,14 +146,39 @@ function render() {
     </div>`;
 
   const ctrl = document.getElementById('controls');
+  
+  // 基本ボタン：前へ
+  let html = `<button class="btn-prev" onclick="goToPrev()">◀ 前へ</button>`;
+
   if (isAutoplay) {
-    ctrl.innerHTML = `<button class="btn-stop" onclick="stopAutoplay()">⏹ 停止</button>`;
+    // 連続再生中：停止ボタン ＋ 再生しないスキップボタン
+    html += `<button class="btn-stop" onclick="stopAutoplay()">⏹ 停止</button>`;
+    html += `<button class="btn-skip" onclick="skipWithoutReading()">⏩ 音声なしで次へ</button>`;
   } else {
-    let html = `<button class="btn-prev" onclick="current > 0 && current--; render()">前へ</button>`;
-    if (isYou) html += `<button class="btn-next" onclick="current++; render()">次へ</button>`;
-    else html += `<button class="btn-play" onclick="startSingleReading()">再生</button>`;
+    // 通常時：再生系 ＋ 再生しないスキップボタン
+    if (isYou) {
+      html += `<button class="btn-next" onclick="goToNext()">✅ 完了して次へ</button>`;
+    } else {
+      html += `<button class="btn-play" onclick="startSingleReading()">🔊 再生して次へ</button>`;
+    }
+    html += `<button class="btn-skip" onclick="skipWithoutReading()">⏩ 音声なしで次へ</button>`;
     html += `<button class="btn-autoread" onclick="startAutoplay()">🔁 最初から聞き流す</button>`;
-    ctrl.innerHTML = html;
+  }
+  ctrl.innerHTML = html;
+}
+
+// 再生せずに次へ（スキップ）
+function skipWithoutReading() {
+  speechSynthesis.cancel();
+  // 聞き流しモード中なら、ループの続きを阻害しないように処理
+  if (isAutoplay) {
+    current++;
+    render();
+    // 連続再生を継続
+    runAutoplayLoop();
+  } else {
+    current++;
+    render();
   }
 }
 
@@ -175,12 +195,14 @@ function runAutoplayLoop() {
   speak(SCENARIO[current].text, () => {
     if (isAutoplay) {
       current++; render();
-      setTimeout(runAutoplayLoop, 1500); // セリフの間の待ち時間
+      setTimeout(runAutoplayLoop, 1500);
     }
   });
 }
 
 function stopAutoplay() { speechSynthesis.cancel(); isAutoplay = false; render(); }
+function goToNext() { speechSynthesis.cancel(); current++; render(); }
+function goToPrev() { speechSynthesis.cancel(); if (current > 0) current--; render(); }
 
 document.getElementById('speedRange').addEventListener('input', function() {
   speed = parseFloat(this.value);
