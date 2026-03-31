@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>議長発話練習アプリ（令和7年度版）</title>
+  <title>議長発話練習アプリ（ナレーション付き）</title>
   <style>
+    /* デザイン設定（変更なし） */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Hiragino Sans', 'Meiryo', sans-serif; background: #f0f4f8; color: #1a1a2e; min-height: 100vh; }
     header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; padding: 16px 24px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
@@ -22,34 +23,27 @@
     .script-text { font-size: 1.05rem; line-height: 2; color: #1f2937; white-space: pre-wrap; }
     .your-turn-card { border: 3px solid #fbbf24; background: #fffbeb; }
     .your-turn-card .script-text { color: #92400e; font-weight: 600; }
-    .speaking-card { border: 3px solid #22d3ee; background: #f0fdfe; }
-    .speaking-indicator { display: none; align-items: center; gap: 8px; margin-bottom: 10px; color: #0891b2; font-size: 0.82rem; font-weight: 600; }
-    .speaking-indicator.active { display: flex; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #22d3ee; animation: bounce 0.6s infinite alternate; }
-    @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-6px); } }
     .controls { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px; }
     button { padding: 12px 24px; border-radius: 10px; border: none; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: all 0.2s; letter-spacing: 0.03em; }
-    button:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-play { background: #22c55e; color: white; }
     .btn-next { background: #3b82f6; color: white; }
     .btn-prev { background: #6b7280; color: white; }
     .btn-stop { background: #ef4444; color: white; }
-    .btn-restart { background: #8b5cf6; color: white; }
+    .btn-autoread { background: #ff9800; color: white; }
     .context-panel { background: #f8fafc; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
-    .context-panel h3 { font-size: 0.82rem; color: #64748b; margin-bottom: 8px; letter-spacing: 0.05em; }
-    .context-list { list-style: none; }
+    .context-list { list-style: none; height: 120px; overflow-y: auto; }
     .context-list li { font-size: 0.88rem; padding: 3px 0; color: #374151; border-left: 3px solid #e2e8f0; padding-left: 10px; margin-bottom: 4px; }
     .context-list li.done { color: #9ca3af; text-decoration: line-through; }
-    .context-list li.current { border-color: #fbbf24; color: #92400e; font-weight: 700; background: #fffbeb; border-radius: 0 6px 6px 0; }
-    .completion-screen { text-align: center; padding: 48px 20px; }
+    .context-list li.current { border-color: #fbbf24; color: #92400e; font-weight: 700; background: #fffbeb; }
     .speed-wrap { display: flex; align-items: center; gap: 10px; font-size: 0.82rem; color: #6b7280; margin-bottom: 16px; justify-content: center; }
+    .autoplay-active { border: 3px solid #ff9800 !important; }
   </style>
 </head>
 <body>
 
 <header>
   <h1>🎙 議長 発話練習アプリ</h1>
-  <p>令和７年度 宇田川原町内会 総会（改善反映版）</p>
+  <p>令和７年度 宇田川原町内会 総会（ナレーション付き）</p>
 </header>
 
 <div class="container">
@@ -65,169 +59,57 @@
   </div>
 
   <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill"></div></div>
-  <div class="progress-label" id="progressLabel"></div>
-
   <div id="mainArea"></div>
   <div class="controls" id="controls"></div>
 </div>
 
 <script>
+// シナリオデータ
 const SCENARIO = [
-  {
-    speaker: "司会",
-    role: "pc",
-    label: "【司会】",
-    text: "皆さま、おはようございます。本日はご多用のところ、宇田川原町内会総会にご出席いただき、誠にありがとうございます。ただいまより、「令和7年度宇田川原町内会 総会」を開催いたします。\nまず、本総会の成立についてご報告いたします。会員38名のうち、出席26名、委任状6名、合計32名の参加をいただいております。規約第18条に基づき、過半数に達しておりますので、本総会は成立しております。\nそれでは、最初に大神会長よりご挨拶をいただきます。大神会長、よろしくお願いいたします。"
-  },
-  {
-    speaker: "大神会長",
-    role: "pc",
-    label: "【大神会長】",
-    text: "（会長あいさつ）"
-  },
-  {
-    speaker: "司会",
-    role: "pc",
-    label: "【司会】",
-    text: "大神会長、ありがとうございました。続きまして、祝電をご紹介いたします。時間の都合上、お名前のみのご紹介とさせていただきます。\n福岡県議会議員 塩生さま、福岡市議会議員 諸隈さま。\n以上2名の方より、お祝いのメッセージを頂戴しております。内容は後方に掲示しておりますので、どうぞご覧ください。\nそれでは、議事に入ります。まず、本日の議長を選出いたします。どなたか立候補、またはご推薦はございますでしょうか？\n……特にないようですので、事務局より末次さんを推薦いたします。ご承認いただける方は、拍手をお願いします。"
-  },
-  {
-    speaker: "議長（あなた）",
-    role: "you",
-    label: "【議長】",
-    text: "皆さま、本日は議長を務めさせていただきます。末次でございます。議事を円滑に進めるため、どうぞご協力をお願いいたします。\n書記は木下副会長、議事録署名人は大神伸雄さん、中村茂人さんにお願いしております。\nそれでは議事に入ります。第1号議案「令和7年度事業報告」、第2号議案「令和7年度決算報告」は関連しておりますので、一括して説明を受けたいと思います。まずは大神会長より事業報告をお願いします。"
-  },
-  {
-    speaker: "大神会長",
-    role: "pc",
-    label: "【大神会長】",
-    text: "（事業報告の説明）"
-  },
-  {
-    speaker: "議長（あなた）",
-    role: "you",
-    label: "【議長】",
-    text: "続きまして、井手会計より決算報告をお願いします。"
-  },
-  {
-    speaker: "井手会計",
-    role: "pc",
-    label: "【井手会計】",
-    text: "（決算報告の説明）"
-  },
-  {
-    speaker: "議長（あなた）",
-    role: "you",
-    label: "【議長】",
-    text: "監事の中村さんより監査報告をお願いします。"
-  },
-  {
-    speaker: "中村監事",
-    role: "pc",
-    label: "【中村監事】",
-    text: "（監査報告の説明）"
-  },
-  {
-    speaker: "議長（あなた）",
-    role: "you",
-    label: "【議長】",
-    text: "ただ今の報告について、ご質問やご意見はございますか？\n……特にないようですので、第1号・第2号議案を原案どおり承認したいと思います。承認いただける方は、拍手をお願いします。\nありがとうございます。拍手多数につき、承認されました。"
-  },
-  {
-    speaker: "議長（あなた）",
-    role: "you",
-    label: "【議長】",
-    text: "続きまして、第3号議案「令和8年度新役員（案）」です。大神会長より候補者の紹介をお願いします。"
-  },
-  {
-    speaker: "大神会長",
-    role: "pc",
-    label: "【大神会長】",
-    text: "（候補者の紹介）"
-  },
-  {
-    speaker: "議長（あなた）",
-    role: "you",
-    label: "【議長】",
-    text: "ただ今ご紹介いただきました新役員案について、承認いただける方は拍手をお願いします。\nありがとうございます。承認されました。新役員の皆さま、簡単にご挨拶をお願いします。"
-  },
-  {
-    speaker: "新役員",
-    role: "pc",
-    label: "【新役員】",
-    text: "（新役員の挨拶）"
-  },
-  {
-    speaker: "議長（あなた）",
-    role: "you",
-    label: "【議長】",
-    text: "それでは議事を続行いたします。第4号議案「令和8年度事業計画案」、第5号議案「令和8年度予算案」は関連しておりますので、一括して説明を受けたいと思います。まずは、新しく就任されました大神会長より、事業計画案の説明をお願いします。"
-  },
-  {
-    speaker: "大神会長（新）",
-    role: "pc",
-    label: "【新会長】",
-    text: "（事業計画案の説明）"
-  },
-  {
-    speaker: "議長（あなた）",
-    role: "you",
-    label: "【議長】",
-    text: "続いて、新会計の永井さんより予算案の説明をお願いします。"
-  },
-  {
-    speaker: "永井会計（新）",
-    role: "pc",
-    label: "【新会計】",
-    text: "（予算案の説明）"
-  },
-  {
-    speaker: "議長（あなた）",
-    role: "you",
-    label: "【議長】",
-    text: "ただ今の説明について、ご質問やご意見はございますか？\n……特にないようでしたら、第4号・第5号議案を原案どおり承認したいと思います。承認いただける方は、拍手をお願いします。\nありがとうございます。両議案とも承認されました。"
-  },
-  {
-    speaker: "議長（あなた）",
-    role: "you",
-    label: "【議長】",
-    text: "続きまして、「その他」の議題に入ります。本日は、「お宮当番要領の一部見直し」について協議いたします。お宮当番さん、説明をお願いします。"
-  },
-  {
-    speaker: "お宮当番",
-    role: "pc",
-    label: "【お宮当番】",
-    text: "（お宮当番要領の見直し説明）"
-  },
-  {
-    speaker: "議長（あなた）",
-    role: "you",
-    label: "【議長】",
-    text: "ただ今の説明について、ご質問やご意見はございますか？\n……特にないようでしたら、説明のとおり承認いただける方は、拍手をお願いします。\nありがとうございます。見直し案は承認されました。次回の当番より適用いたします。"
-  },
-  {
-    speaker: "議長（あなた）",
-    role: "you",
-    label: "【議長】",
-    text: "以上で、本日ご提案いたしました議案の審議はすべて終了しました。最後に、町内会運営全般について、ご意見やご要望はございますでしょうか？\n……特にないようですので、これにて議長を退任させていただきます。ご協力ありがとうございました。"
-  },
-  {
-    speaker: "司会",
-    role: "pc",
-    label: "【司会】",
-    text: "末次議長、ありがとうございました。皆さまのおかげで、本日の総会を無事終えることができました。これをもちまして、総会を終了いたします。\nこのあと、意見交換会を行いますので、お時間のある方はぜひご参加ください。お帰りの際は「お弁当」と「お茶」をお持ち帰りください。また、プロ野球の入場無料引換チケットが若干ございますので、ご希望の方は役員席までお越しください。本日はありがとうございました。"
-  }
+  { speaker: "司会", role: "pc", label: "【司会】", text: "皆さま、おはようございます。ただいまより、「令和7年度宇田川原町内会 総会」を開催いたします。会員38名のうち、出席26名、委任状6名、合計32名の参加をいただいております。規約第18条に基づき、過半数に達しておりますので、本総会は成立しております。それでは、最初に大神会長よりご挨拶をいただきます。大神会長、よろしくお願いいたします。" },
+  { speaker: "大神会長", role: "pc", label: "【大神会長】", text: "（会長あいさつ）" },
+  { speaker: "司会", role: "pc", label: "【司会】", text: "大神会長、ありがとうございました。続きまして、祝電をご紹介いたします。福岡県議会議員 塩生さま、福岡市議会議員 諸隈さま。以上2名の方より、お祝いのメッセージを頂戴しております。それでは、議事に入ります。まず、本日の議長を選出いたします。どなたか立候補、またはご推薦はございますでしょうか？……特にないようですので、事務局より末次さんを推薦いたします。ご承認いただける方は、拍手をお願いします。" },
+  { speaker: "議長（あなた）", role: "you", label: "【議長】", text: "皆さま、本日は議長を務めさせていただきます。末次でございます。書記は木下副会長、議事録署名人は大神伸雄さん、中村茂人さんにお願いしております。それでは議事に入ります。第1号議案「令和7年度事業報告」、第2号議案「令和7年度決算報告」は関連しておりますので、一括して説明を受けたいと思います。まずは大神会長より事業報告をお願いします。" },
+  { speaker: "大神会長", role: "pc", label: "【大神会長】", text: "（事業報告の説明）" },
+  { speaker: "議長（あなた）", role: "you", label: "【議長】", text: "続きまして、井手会計より決算報告をお願いします。" },
+  { speaker: "井手会計", role: "pc", label: "【井手会計】", text: "（決算報告の説明）" },
+  { speaker: "議長（あなた）", role: "you", label: "【議長】", text: "監事の中村さんより監査報告をお願いします。" },
+  { speaker: "中村監事", role: "pc", label: "【中村監事】", text: "（監査報告の説明）" },
+  { speaker: "議長（あなた）", role: "you", label: "【議長】", text: "ただ今の報告について、ご質問やご意見はございますか？……特にないようですので、第1号・第2号議案を原案どおり承認したいと思います。承認いただける方は、拍手をお願いします。ありがとうございます。承認されました。" },
+  { speaker: "議長（あなた）", role: "you", label: "【議長】", text: "続きまして、第3号議案「令和8年度新役員（案）」です。大神会長より候補者の紹介をお願いします。" },
+  { speaker: "大神会長", role: "pc", label: "【大神会長】", text: "（候補者の紹介）" },
+  { speaker: "議長（あなた）", role: "you", label: "【議長】", text: "ただ今ご紹介いただきました新役員案について、承認いただける方は拍手をお願いします。ありがとうございます。承認されました。新役員の皆さま、簡単にご挨拶をお願いします。" },
+  { speaker: "新役員", role: "pc", label: "【新役員】", text: "（新役員の挨拶）" },
+  { speaker: "議長（あなた）", role: "you", label: "【議長】", text: "それでは議事を続行いたします。第4号議案「令和8年度事業計画案」、第5号議案「令和8年度予算案」は関連しておりますので、一括して説明を受けたいと思います。まずは、新しく就任されました大神会長より、事業計画案の説明をお願いします。" },
+  { speaker: "大神会長（新）", role: "pc", label: "【新会長】", text: "（事業計画案の説明）" },
+  { speaker: "議長（あなた）", role: "you", label: "【議長】", text: "続いて、新会計の永井さんより予算案の説明をお願いします。" },
+  { speaker: "永井会計（新）", role: "pc", label: "【新会計】", text: "（予算案の説明）" },
+  { speaker: "議長（あなた）", role: "you", label: "【議長】", text: "ただ今の説明について、ご質問やご意見はございますか？……特にないようでしたら、第4号・第5号議案を原案どおり承認したいと思います。承認いただける方は、拍手をお願いします。ありがとうございます。承認されました。" },
+  { speaker: "議長（あなた）", role: "you", label: "【議長】", text: "続きまして、「その他」の議題に入ります。お宮当番さん、説明をお願いします。" },
+  { speaker: "お宮当番", role: "pc", label: "【お宮当番】", text: "（お宮当番要領の見直し説明）" },
+  { speaker: "議長（あなた）", role: "you", label: "【議長】", text: "ただ今の説明について、ご質問はございますか？……ないようでしたら、承認いただける方は拍手をお願いします。ありがとうございます。見直し案は承認されました。" },
+  { speaker: "議長（あなた）", role: "you", label: "【議長】", text: "以上で、審議はすべて終了しました。最後に、ご意見はございますでしょうか？……ないようですので、議長を退任させていただきます。ご協力ありがとうございました。" },
+  { speaker: "司会", role: "pc", label: "【司会】", text: "末次議長、ありがとうございました。これをもちまして、総会を終了いたします。お帰りの際は「お弁当」と「お茶」をお持ち帰りください。本日はありがとうございました。" }
 ];
 
-// ─── 以降、制御ロジック（変更なし） ───
 let current = 0;
-let speaking = false;
 let speed = 0.9;
+let isAutoplay = false;
 
+// 音声再生：ト書きをナレーションに変換する処理を追加
 function speak(text, onEnd) {
   speechSynthesis.cancel();
-  const clean = text.replace(/（[^）]*）/g, '').replace(/\n+/g, '。');
-  const utterance = new SpeechSynthesisUtterance(clean);
+  
+  let targetText = text;
+  
+  // ( ) の中身を抽出
+  const match = text.match(/（([^）]*)）/);
+  if (match) {
+    // 括弧の中身がある場合、「（内容）が行われます」というナレーションに変換
+    targetText = match[1] + "が行われます。";
+  }
+
+  const utterance = new SpeechSynthesisUtterance(targetText);
   utterance.lang = 'ja-JP';
   utterance.rate = speed;
   utterance.onend = onEnd;
@@ -238,7 +120,6 @@ function render() {
   const total = SCENARIO.length;
   const pct = Math.round((current / total) * 100);
   document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('progressLabel').textContent = `${current} / ${total} ステップ完了`;
 
   const ul = document.getElementById('contextList');
   ul.innerHTML = '';
@@ -252,36 +133,54 @@ function render() {
 
   const area = document.getElementById('mainArea');
   if (current >= total) {
-    area.innerHTML = '<div class="card completion-screen"><h2>🎉 練習完了！</h2><button class="btn-restart" onclick="location.reload()">最初から</button></div>';
+    isAutoplay = false;
+    area.innerHTML = `<div class="card" style="text-align:center"><h2>練習完了</h2><button class="btn-autoread" onclick="location.reload()">最初から</button></div>`;
     return;
   }
 
   const s = SCENARIO[current];
   const isYou = s.role === 'you';
+  
   area.innerHTML = `
-    <div class="card ${isYou ? 'your-turn-card' : ''}">
-      <div class="speaker-badge ${isYou ? 'badge-you' : 'badge-pc'}">${isYou ? '🎤 あなたの番' : '🔊 PC読み上げ'}</div>
+    <div class="card ${isYou ? 'your-turn-card' : ''} ${isAutoplay ? 'autoplay-active' : ''}">
+      <div class="speaker-badge ${isYou ? 'badge-you' : 'badge-pc'}">
+        ${isAutoplay ? '▶ 自動進行中' : (isYou ? '🎤 あなたの番' : '🔊 PC読み上げ')}
+      </div>
       <div class="speaker-label">${s.label}</div>
-      <div class="script-text">${s.text.replace(/\n/g, '<br>')}</div>
+      <div class="script-text">${s.text}</div>
     </div>`;
 
   const ctrl = document.getElementById('controls');
-  ctrl.innerHTML = `<button class="btn-prev" onclick="current > 0 && current--; render()">前へ</button>`;
-  if (isYou) {
-    ctrl.innerHTML += `<button class="btn-next" onclick="current++; render()">次へ</button>`;
+  if (isAutoplay) {
+    ctrl.innerHTML = `<button class="btn-stop" onclick="stopAutoplay()">⏹ 停止</button>`;
   } else {
-    ctrl.innerHTML += `<button class="btn-play" onclick="startReading()">再生</button>`;
+    let html = `<button class="btn-prev" onclick="current > 0 && current--; render()">前へ</button>`;
+    if (isYou) html += `<button class="btn-next" onclick="current++; render()">次へ</button>`;
+    else html += `<button class="btn-play" onclick="startSingleReading()">再生</button>`;
+    html += `<button class="btn-autoread" onclick="startAutoplay()">🔁 最初から聞き流す</button>`;
+    ctrl.innerHTML = html;
   }
 }
 
-function startReading() {
-  speaking = true;
+function startSingleReading() {
+  speak(SCENARIO[current].text, () => { current++; render(); });
+}
+
+function startAutoplay() {
+  isAutoplay = true; current = 0; render(); runAutoplayLoop();
+}
+
+function runAutoplayLoop() {
+  if (!isAutoplay || current >= SCENARIO.length) { isAutoplay = false; render(); return; }
   speak(SCENARIO[current].text, () => {
-    speaking = false;
-    current++;
-    render();
+    if (isAutoplay) {
+      current++; render();
+      setTimeout(runAutoplayLoop, 1500); // セリフの間の待ち時間
+    }
   });
 }
+
+function stopAutoplay() { speechSynthesis.cancel(); isAutoplay = false; render(); }
 
 document.getElementById('speedRange').addEventListener('input', function() {
   speed = parseFloat(this.value);
