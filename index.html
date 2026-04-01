@@ -96,12 +96,14 @@ let speed = 0.9;
 let isAutoplay = false;
 
 // 音声再生（ナレーション変換機能付き）
-function speak(text, onEnd) {
+function speak(text, role, onEnd) {
   speechSynthesis.cancel();
   let targetText = text;
-  const match = text.match(/（([^）]*)）/);
-  if (match) {
-    targetText = match[1] + "が行われます。";
+  if (role === "pc") {
+    const match = text.match(/（([^）]*)）/);
+    if (match) {
+      targetText = match[1] + "が行われます。";
+    }
   }
 
   const utterance = new SpeechSynthesisUtterance(targetText);
@@ -183,7 +185,7 @@ function skipWithoutReading() {
 }
 
 function startSingleReading() {
-  speak(SCENARIO[current].text, () => { current++; render(); });
+  speak(SCENARIO[current].text, SCENARIO[current].role, () => { current++; render(); });
 }
 
 function startAutoplay() {
@@ -192,7 +194,7 @@ function startAutoplay() {
 
 function runAutoplayLoop() {
   if (!isAutoplay || current >= SCENARIO.length) { isAutoplay = false; render(); return; }
-  speak(SCENARIO[current].text, () => {
+  speak(SCENARIO[current].text, SCENARIO[current].role, () => {
     if (isAutoplay) {
       current++; render();
       setTimeout(runAutoplayLoop, 1500);
