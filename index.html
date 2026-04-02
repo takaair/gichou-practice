@@ -109,6 +109,9 @@ function speak(text, role, onEnd) {
   const utterance = new SpeechSynthesisUtterance(targetText);
   utterance.lang = 'ja-JP';
   utterance.rate = speed;
+  if (role === "you") {
+    utterance.pitch = 0.5; // 男性っぽい声にするためピッチを下げる
+  }
   utterance.onend = onEnd;
   speechSynthesis.speak(utterance);
 }
@@ -197,7 +200,9 @@ function runAutoplayLoop() {
   speak(SCENARIO[current].text, SCENARIO[current].role, () => {
     if (isAutoplay) {
       current++; render();
-      setTimeout(runAutoplayLoop, 1500);
+      // 質問や拍手の後には3秒、それ以外は1.5秒待つ
+      const delay = SCENARIO[current - 1].text.includes('ご質問') || SCENARIO[current - 1].text.includes('拍手をお願いします') ? 3000 : 1500;
+      setTimeout(runAutoplayLoop, delay);
     }
   });
 }
