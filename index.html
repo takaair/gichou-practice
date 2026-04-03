@@ -101,7 +101,9 @@ function speak(text, role, onEnd) {
   let targetText = text;
 
   // 「〜方」を「〜かた」で読み上げ（「方法」などの「ほう」読みは残す）
-  targetText = targetText.replace(/(\p{Script=Han}|[ぁ-ゔァ-ヴー])方(?=$|\s|、|。|！|？|）|」/gu, '$1かた');
+  targetText = targetText.replace(/方法/g, '__HOU__');
+  targetText = targetText.replace(/方/g, 'かた');
+  targetText = targetText.replace(/__HOU__/g, '方法');
 
   // 固有名詞の読みを補正（大神＝おおがみ）
   targetText = targetText.replace(/大神/g, 'おおがみ');
