@@ -99,6 +99,13 @@ let isAutoplay = false;
 function speak(text, role, onEnd) {
   speechSynthesis.cancel();
   let targetText = text;
+
+  // 「〜方」を「〜かた」で読み上げ（「方法」などの「ほう」読みは残す）
+  targetText = targetText.replace(/(\p{Script=Han}|[ぁ-ゔァ-ヴー])方(?=$|\s|、|。|！|？|）|」/gu, '$1かた');
+
+  // 固有名詞の読みを補正（大神＝おおがみ）
+  targetText = targetText.replace(/大神/g, 'おおがみ');
+
   if (role === "pc") {
     const match = text.match(/（([^）]*)）/);
     if (match) {
